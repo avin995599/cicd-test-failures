@@ -1,0 +1,106 @@
+name: CI Test Pipeline
+
+on: [push, workflow_dispatch]
+
+jobs:
+
+  # Job 1 — FAILS (npm peer dependency conflict)
+  npm-dependency-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install conflicting dependencies
+        run: |
+          cat > package.json << 'EOF'
+          {
+            "name": "test-app",
+            "version": "1.0.0",
+            "dependencies": {
+              "react": "^18.2.0",
+              "@auth/react-sdk": "^0.4.2"
+            }
+          }
+          EOF
+          npm install
+
+  # Job 2 — FAILS (Python test assertion error)
+  python-test-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run failing tests
+        run: |
+          cat > test_sample.py << 'EOF'
+          def test_token_expiry():
+              token_data = {"expires_in": 7200}
+              assert token_data["expires_in"] == 3600, "Token expiry mismatch"
+
+          def test_user_count():
+              users = [1, 2, 3]
+              assert len(users) == 5, "User count mismatch"
+          EOF
+          pytest test_sample.py -v
+
+  # Job 3 — FAILS (missing environment variable)
+  missing-env-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Connect to database
+        run: |
+          python3 -c "
+          import os
+          db_url = os.environ['DATABASE_URL']
+          print(f'Connecting to {db_url}')
+          "
+
+  # Job 4 — FAILS (Docker build error)
+  docker-build-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM python:3.11-slim
+          WORKDIR /app
+          COPY requirements.txt .
+          RUN pip install -r requirements.txt
+          EOF
+          docker build -t test-app .
+
+  # Job 5 — FAILS (lint errors)
+  lint-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Run linter
+        run: |
+          cat > bad_code.py << 'EOF'
+          import os
+          import sys
+          x=1
+          y = 2
+          def foo( ):
+              z=x+y
+              return z
+          result = foo( )
+          print(result )
+          EOF
+          ruff check bad_code.py
