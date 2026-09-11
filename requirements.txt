@@ -1,2 +1,2 @@
-install: flask==2.0.1
-install: pandas==1.3.5
+install: flask
+install: requests
