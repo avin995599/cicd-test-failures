@@ -1,0 +1,1 @@
+export DATABASE_URL=${DATABASE_URL:-default_database_url}
